@@ -7,6 +7,9 @@
   # devDependencies — but tailwindcss/@tailwindcss/postcss (devDependencies)
   # are required by `next build` itself, so they must still be installed.
   NPM_FLAGS = "--include=dev"
+  # Pin to a Node version known to support Next.js 16 / React 19 fully,
+  # rather than relying on whatever Netlify's default image ships.
+  NODE_VERSION = "22"
 
 [functions]
   directory = "netlify/functions"
