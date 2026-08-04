@@ -40,6 +40,10 @@ yarn-error.log*
 # netlify (local CLI state, not source)
 /.netlify
 
+# generated standalone server bundle for the Netlify Function (built by
+# scripts/prepare-netlify-function.mjs, not source)
+/netlify/functions/next-server/standalone
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
