@@ -2,18 +2,18 @@ import { PrismaClient } from "@/generated/prisma";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// Falls back to a syntactically-valid placeholder rather than leaving this
-// undefined. Prisma Client validates env("DATABASE_URL") eagerly at
-// construction time, not just on first query — if the variable is
-// completely unset (as opposed to just pointing at the wrong database),
-// `new PrismaClient()` throws immediately. That's fatal wherever this
-// module gets imported at build/analysis time (e.g. by a deploy platform
-// tracing route modules), not just at request time. NETLIFY_DATABASE_URL
-// is what Netlify DB auto-injects; DATABASE_URL is what we set explicitly
-// once we have the real connection string.
+// Netlify DB (via @netlify/database) injects the live connection string as
+// NETLIFY_DB_URL at runtime — not DATABASE_URL, and not (as older docs
+// suggested) NETLIFY_DATABASE_URL. It takes priority so the deployed app
+// always talks to the real provisioned database. DATABASE_URL remains the
+// override for local dev (see .env) and any environment where it's set
+// explicitly. The placeholder guards against Prisma Client's eager
+// env-validation: it throws at construction time (not just on first
+// query) when the resolved URL is completely unset, which is fatal
+// wherever this module gets imported during build-time route analysis.
 const datasourceUrl =
+  process.env.NETLIFY_DB_URL ||
   process.env.DATABASE_URL ||
-  process.env.NETLIFY_DATABASE_URL ||
   "postgresql://placeholder:placeholder@localhost:5432/placeholder";
 
 export const prisma =

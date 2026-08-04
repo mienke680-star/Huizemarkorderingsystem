@@ -7,13 +7,8 @@
 // native enum support) and production (Postgres) share one schema.
 
 generator client {
-  provider      = "prisma-client-js"
-  output        = "../src/generated/prisma"
-  // "native" covers local dev; rhel-openssl-3.0.x is the query-engine
-  // binary Netlify's (AWS Lambda / Amazon Linux) serverless functions need
-  // at runtime — without it the deployed function can build fine but fail
-  // the moment it tries to touch the database.
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
