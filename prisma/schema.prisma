@@ -1,0 +1,268 @@
+// Huizemark Agent Ordering Hub — database schema
+//
+// SQLite has no native enum support in Prisma, so "enum-like" fields below
+// are typed String and validated against the const unions in
+// src/lib/constants.ts (Role, OrderStatus, ApprovalStatus, UrgencyLevel,
+// DeliveryMethod, StockStatus, FileKind, NotificationType).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Core people & org structure
+// ---------------------------------------------------------------------------
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  address   String?
+  createdAt DateTime @default(now())
+
+  users  User[]
+  orders Order[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  initials     String
+  avatarColor  String   @default("#1B2A4A")
+  phone        String?
+  active       Boolean  @default(true)
+  branchId     String?
+  createdAt    DateTime @default(now())
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  ordersCreated        Order[]              @relation("OrderAgent")
+  statusChanges        OrderStatusHistory[]
+  filesUploaded        OrderFile[]
+  comments             Comment[]
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+  savedFilters         SavedFilter[]
+  approvalsRespondedBy OrderApproval[]      @relation("ApprovalRespondedBy")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue
+// ---------------------------------------------------------------------------
+
+model ProductCategory {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  icon        String  @default("Package")
+  sortOrder   Int     @default(0)
+
+  products Product[]
+}
+
+model Supplier {
+  id                String   @id @default(cuid())
+  name              String
+  contactPerson     String?
+  email             String?
+  phone             String?
+  whatsapp          String?
+  address           String?
+  avgTurnaroundDays Int      @default(5)
+  rating            Float    @default(4.5)
+  active            Boolean  @default(true)
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  products Product[]
+  orders   Order[]
+}
+
+model Product {
+  id                     String   @id @default(cuid())
+  name                   String
+  categoryId             String
+  description            String?
+  priceOnRequest         Boolean  @default(false)
+  price                  Float?
+  productionTimeDays     Int      @default(5)
+  minOrderQty            Int      @default(1)
+  sizesJson              String   @default("[]")
+  finishesJson           String   @default("[]")
+  personalisationOptions String   @default("[]")
+  supplierId             String?
+  stockStatus            String   @default("MADE_TO_ORDER")
+  imageUrl               String?
+  active                 Boolean  @default(true)
+  createdAt              DateTime @default(now())
+
+  category   ProductCategory @relation(fields: [categoryId], references: [id])
+  supplier   Supplier?       @relation(fields: [supplierId], references: [id])
+  orderItems OrderItem[]
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+model Order {
+  id                     String    @id @default(cuid())
+  orderNumber            String    @unique
+  agentId                String
+  branchId               String?
+  status                 String    @default("DRAFT")
+  urgency                String    @default("NORMAL")
+  deliveryMethod         String    @default("COLLECT_FROM_OFFICE")
+  deliveryAddress        String?
+  requiredDate           DateTime?
+  agentContact           String?
+  motivation             String?
+  costCentre             String?
+  notes                  String?
+  supplierPreference     String?
+  supplierId             String?
+  estimatedCost          Float     @default(0)
+  actualCost             Float?
+  trackingNumber         String?
+  courierName            String?
+  courierBookedAt        DateTime?
+  requiredApprovalsJson  String    @default("[]")
+  archived               Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  submittedAt            DateTime?
+  completedAt            DateTime?
+  estimatedCompletionDate DateTime?
+
+  agent    User      @relation("OrderAgent", fields: [agentId], references: [id])
+  branch   Branch?   @relation(fields: [branchId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  items         OrderItem[]
+  approvals     OrderApproval[]
+  statusHistory OrderStatusHistory[]
+  files         OrderFile[]
+  comments      Comment[]
+  notifications Notification[]
+}
+
+model OrderItem {
+  id                  String  @id @default(cuid())
+  orderId             String
+  productId           String?
+  productNameSnapshot String
+  quantity            Int     @default(1)
+  size                String?
+  colour              String?
+  material            String?
+  finish              String?
+  customWording       String?
+  unitPriceEstimate   Float   @default(0)
+  lineTotalEstimate   Float   @default(0)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model OrderApproval {
+  id            String    @id @default(cuid())
+  orderId       String
+  approverRole  String
+  status        String    @default("AWAITING_REVIEW")
+  comment       String?
+  respondedAt   DateTime?
+  respondedById String?
+  required      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  order       Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  respondedBy User? @relation("ApprovalRespondedBy", fields: [respondedById], references: [id])
+}
+
+model OrderStatusHistory {
+  id                      String    @id @default(cuid())
+  orderId                 String
+  status                  String
+  changedById             String?
+  note                    String?
+  fileUrl                 String?
+  estimatedNextStep       String?
+  estimatedCompletionDate DateTime?
+  createdAt               DateTime  @default(now())
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User? @relation(fields: [changedById], references: [id])
+}
+
+model OrderFile {
+  id           String   @id @default(cuid())
+  orderId      String
+  fileName     String
+  fileUrl      String
+  fileKind     String   @default("OTHER")
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  uploadedBy User? @relation(fields: [uploadedById], references: [id])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  orderId   String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  orderId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  action        String
+  entityType    String
+  entityId      String?
+  orderNumber   String?
+  previousValue String?
+  newValue      String?
+  deviceInfo    String?
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model SavedFilter {
+  id         String   @id @default(cuid())
+  userId     String
+  page       String
+  name       String
+  filterJson String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
