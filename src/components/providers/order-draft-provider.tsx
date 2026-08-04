@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { createBrowserStore } from "@/lib/browser-store";
 
 export type DraftItem = {
   key: string;
@@ -26,38 +27,22 @@ type OrderDraftContextValue = {
 };
 
 const OrderDraftContext = createContext<OrderDraftContextValue | null>(null);
-const STORAGE_KEY = "hm-order-draft-cart";
+const store = createBrowserStore<DraftItem[]>("local", "hm-order-draft-cart", []);
 
 export function OrderDraftProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<DraftItem[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) setItems(JSON.parse(stored));
-    } catch {
-      // ignore malformed cart state
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items, hydrated]);
+  const items = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
 
   function addItem(item: Omit<DraftItem, "key">) {
-    setItems((prev) => [...prev, { ...item, key: crypto.randomUUID() }]);
+    store.set([...store.getSnapshot(), { ...item, key: crypto.randomUUID() }]);
   }
   function removeItem(key: string) {
-    setItems((prev) => prev.filter((i) => i.key !== key));
+    store.set(store.getSnapshot().filter((i) => i.key !== key));
   }
   function updateItem(key: string, patch: Partial<DraftItem>) {
-    setItems((prev) => prev.map((i) => (i.key === key ? { ...i, ...patch } : i)));
+    store.set(store.getSnapshot().map((i) => (i.key === key ? { ...i, ...patch } : i)));
   }
   function clear() {
-    setItems([]);
+    store.set([]);
   }
 
   return (

@@ -21,13 +21,19 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  function close() {
+    setOpen(false);
+    setQuery("");
+    setResults(null);
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen(true);
       }
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -35,33 +41,34 @@ export function GlobalSearch() {
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
-    else {
-      setQuery("");
-      setResults(null);
-    }
   }, [open]);
 
+  const searchable = query.trim().length >= 2;
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (value.trim().length >= 2) setLoading(true);
+  }
+
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults(null);
-      return;
-    }
-    setLoading(true);
+    if (!searchable) return;
     const t = setTimeout(async () => {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       if (res.ok) setResults(await res.json());
       setLoading(false);
     }, 220);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, searchable]);
 
   function go(href: string) {
-    setOpen(false);
+    close();
     router.push(href);
   }
 
   const hasResults =
-    results && (results.orders.length || results.products.length || results.suppliers.length || results.agents.length);
+    searchable &&
+    results &&
+    (results.orders.length || results.products.length || results.suppliers.length || results.agents.length);
 
   return (
     <>
@@ -84,7 +91,7 @@ export function GlobalSearch() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-navy-900/40 backdrop-blur-sm"
-              onClick={() => setOpen(false)}
+              onClick={close}
             />
             <motion.div
               initial={{ opacity: 0, y: -16, scale: 0.97 }}
@@ -98,7 +105,7 @@ export function GlobalSearch() {
                 <input
                   ref={inputRef}
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => handleQueryChange(e.target.value)}
                   placeholder="Search order number, agent, product, supplier…"
                   className="flex-1 text-sm text-navy-800 outline-none placeholder:text-grey-400"
                 />
@@ -114,7 +121,7 @@ export function GlobalSearch() {
                   <p className="p-6 text-center text-sm text-grey-400">No results for &ldquo;{query}&rdquo;.</p>
                 )}
 
-                {results?.orders && results.orders.length > 0 && (
+                {searchable && results?.orders && results.orders.length > 0 && (
                   <div className="mb-2">
                     <p className="px-3 py-1.5 text-[11px] font-semibold tracking-wide text-grey-400 uppercase">Orders</p>
                     {results.orders.map((o) => (
@@ -133,7 +140,7 @@ export function GlobalSearch() {
                   </div>
                 )}
 
-                {results?.products && results.products.length > 0 && (
+                {searchable && results?.products && results.products.length > 0 && (
                   <div className="mb-2">
                     <p className="px-3 py-1.5 text-[11px] font-semibold tracking-wide text-grey-400 uppercase">Products</p>
                     {results.products.map((p) => (
@@ -150,7 +157,7 @@ export function GlobalSearch() {
                   </div>
                 )}
 
-                {results?.suppliers && results.suppliers.length > 0 && (
+                {searchable && results?.suppliers && results.suppliers.length > 0 && (
                   <div className="mb-2">
                     <p className="px-3 py-1.5 text-[11px] font-semibold tracking-wide text-grey-400 uppercase">Suppliers</p>
                     {results.suppliers.map((s) => (
@@ -166,7 +173,7 @@ export function GlobalSearch() {
                   </div>
                 )}
 
-                {results?.agents && results.agents.length > 0 && (
+                {searchable && results?.agents && results.agents.length > 0 && (
                   <div>
                     <p className="px-3 py-1.5 text-[11px] font-semibold tracking-wide text-grey-400 uppercase">Agents</p>
                     {results.agents.map((a) => (

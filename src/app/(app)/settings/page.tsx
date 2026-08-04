@@ -7,7 +7,7 @@ import { Building2, Moon, Plus, Sparkles, UserRound } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { useMotionSettings } from "@/components/providers/motion-provider";
 import { ROLE_LABELS, isAdmin, type Role } from "@/lib/constants";
 

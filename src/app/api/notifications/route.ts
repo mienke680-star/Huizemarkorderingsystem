@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ACTIVE_STATUSES, type OrderStatus } from "@/lib/constants";
+import { ACTIVE_STATUSES } from "@/lib/constants";
 
 // Lazily generates "due date approaching" / "overdue" notifications for the
 // current agent's own orders. There's no cron in this environment, so this

@@ -6,6 +6,21 @@ import type { ReactNode } from "react";
 
 const PARTICLE_COLORS = ["#ff6b00", "#ffa35f", "#142244", "#4c6094", "#10b981"];
 
+// Deterministic per-particle jitter (not Math.random()) so the burst stays
+// pure across renders while still reading as organic rather than a perfect
+// circle — variation comes from the golden-angle-derived offsets below.
+const PARTICLES = Array.from({ length: 16 }, (_, i) => {
+  const angle = (i / 16) * Math.PI * 2;
+  const jitterA = ((i * 47) % 40) - 0; // 0–39
+  const jitterB = ((i * 83) % 15) / 100; // 0–0.14
+  return {
+    x: Math.cos(angle) * (70 + jitterA),
+    y: Math.sin(angle) * (70 + jitterA),
+    color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+    delay: jitterB,
+  };
+});
+
 export function SuccessCelebration({
   open,
   title,
@@ -17,15 +32,7 @@ export function SuccessCelebration({
   description?: string;
   children?: ReactNode;
 }) {
-  const particles = Array.from({ length: 16 }, (_, i) => {
-    const angle = (i / 16) * Math.PI * 2;
-    return {
-      x: Math.cos(angle) * (70 + Math.random() * 40),
-      y: Math.sin(angle) * (70 + Math.random() * 40),
-      color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
-      delay: Math.random() * 0.15,
-    };
-  });
+  const particles = PARTICLES;
 
   return (
     <AnimatePresence>

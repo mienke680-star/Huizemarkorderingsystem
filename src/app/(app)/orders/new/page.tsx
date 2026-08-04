@@ -165,7 +165,6 @@ function NewOrderForm() {
       setBranches(b.branches);
       setAgents(a.agents);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [admin]);
 
   useEffect(() => {

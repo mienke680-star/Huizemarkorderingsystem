@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardList, CheckCircle2, Factory, Truck } from "lucide-react";
+import { createBrowserStore } from "@/lib/browser-store";
 
-const STORAGE_KEY = "hm-intro-seen";
 const TOTAL_MS = 3100;
+const seenStore = createBrowserStore<boolean>("session", "hm-intro-seen", false);
 
 const ROUTE_ICONS = [
   { Icon: ClipboardList, label: "Order" },
@@ -15,28 +16,27 @@ const ROUTE_ICONS = [
 ];
 
 export function IntroExperience({ onFinish }: { onFinish?: () => void }) {
-  const [visible, setVisible] = useState<boolean | null>(null);
+  const seen = useSyncExternalStore(seenStore.subscribe, seenStore.getSnapshot, seenStore.getServerSnapshot);
+  const [dismissed, setDismissed] = useState(false);
+  const visible = !seen && !dismissed;
 
   useEffect(() => {
-    const seen = window.sessionStorage.getItem(STORAGE_KEY);
-    if (seen) {
-      setVisible(false);
-      onFinish?.();
-      return;
-    }
-    setVisible(true);
+    if (seen) return;
     const t = setTimeout(finish, TOTAL_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [seen]);
+
+  useEffect(() => {
+    if (seen) onFinish?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seen]);
 
   function finish() {
-    window.sessionStorage.setItem(STORAGE_KEY, "1");
-    setVisible(false);
+    seenStore.set(true);
+    setDismissed(true);
     onFinish?.();
   }
-
-  if (visible === null || visible === false) return null;
 
   return (
     <AnimatePresence>

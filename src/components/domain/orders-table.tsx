@@ -59,7 +59,6 @@ export function OrdersTable({ orders, showAgent = true }: { orders: OrderRow[]; 
           {orders.map((o, i) => {
             const isOpen = expanded === o.id;
             const requiredApprovals = o.approvals.filter((a) => a.required);
-            const approvedCount = requiredApprovals.filter((a) => a.status === "APPROVED").length;
             return (
               <motion.tr
                 key={o.id}

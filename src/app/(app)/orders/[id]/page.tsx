@@ -9,7 +9,6 @@ import {
   Copy,
   Printer,
   Archive,
-  ArchiveRestore,
   Ban,
   Pencil,
   ShieldCheck,

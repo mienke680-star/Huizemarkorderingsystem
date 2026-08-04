@@ -5,31 +5,37 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Manual, locale-independent formatting below. Intl formatting for "en-ZA"
+// depends on the ICU data compiled into the Node.js binary, which can
+// differ between the server runtime and the browser (e.g. a Node build
+// with the reduced "small-icu" set formats "en-ZA" differently to a full
+// ICU browser), causing React hydration mismatches. Formatting by hand
+// keeps the server-rendered HTML and the client's first render identical.
+
 export function formatCurrency(value: number | null | undefined) {
   if (value === null || value === undefined) return "Price on Request";
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 2,
-  }).format(value);
+  const negative = value < 0;
+  const fixed = Math.abs(value).toFixed(2);
+  const [whole, decimals] = fixed.split(".");
+  const withThousands = whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${negative ? "-" : ""}R ${withThousands},${decimals}`;
 }
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function formatDate(date: Date | string | null | undefined) {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-ZA", { day: "2-digit", month: "short", year: "numeric" }).format(d);
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${day} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export function formatDateTime(date: Date | string | null | undefined) {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-ZA", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${formatDate(d)}, ${hours}:${minutes}`;
 }
 
 export function timeAgo(date: Date | string | null | undefined) {
