@@ -63,7 +63,7 @@ export async function GET(req: Request) {
           product: { select: { categoryId: true, category: { select: { name: true } } } },
         },
       },
-      approvals: { select: { approverRole: true, status: true, required: true } },
+      approvals: { select: { approverRole: true, status: true, required: true, respondedAt: true } },
     },
     orderBy: { createdAt: "desc" },
   });
