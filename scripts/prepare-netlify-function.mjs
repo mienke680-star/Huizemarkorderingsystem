@@ -25,6 +25,11 @@ function moveInto(src, dest) {
   execFileSync("mv", [src, dest]);
 }
 
+function copyInto(src, dest) {
+  mkdirSync(path.dirname(dest), { recursive: true });
+  execFileSync("cp", ["-a", src, dest]);
+}
+
 rmSync(standaloneOut, { recursive: true, force: true });
 
 // The full root node_modules (hundreds of MB) and the webpack/turbopack
@@ -39,6 +44,6 @@ rmSync(path.join(root, ".next", "cache"), { recursive: true, force: true });
 mkdirSync(functionDir, { recursive: true });
 execFileSync("mv", [path.join(root, ".next", "standalone"), standaloneOut]);
 moveInto(path.join(root, ".next", "static"), path.join(standaloneOut, ".next", "static"));
-moveInto(path.join(root, "public"), path.join(standaloneOut, "public"));
+copyInto(path.join(root, "public"), path.join(standaloneOut, "public"));
 
 console.log("Prepared standalone Next.js server for Netlify Function at", standaloneOut);
