@@ -33,7 +33,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json({ order });
+  const visibleComments = seeAll ? order.comments : order.comments.filter((c) => !c.internal);
+
+  return NextResponse.json({ order: { ...order, comments: visibleComments } });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

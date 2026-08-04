@@ -221,6 +221,7 @@ model Comment {
   orderId   String
   userId    String
   body      String
+  internal  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)

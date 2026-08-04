@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -90,10 +90,23 @@ function parseArr(json?: string): string[] {
 }
 
 export default function NewOrderPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewOrderForm />
+    </Suspense>
+  );
+}
+
+function NewOrderForm() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editOrderId = searchParams.get("edit");
+  const isEdit = !!editOrderId;
   const { items: draftItems, clear: clearDraft } = useOrderDraft();
   const seededRef = useRef(false);
+  const [loadingEdit, setLoadingEdit] = useState(isEdit);
+  const [existingFiles, setExistingFiles] = useState<{ id: string; fileName: string; fileUrl: string }[]>([]);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -117,6 +130,7 @@ export default function NewOrderPage() {
     control,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
@@ -155,7 +169,49 @@ export default function NewOrderPage() {
   }, [admin]);
 
   useEffect(() => {
-    if (seededRef.current || draftItems.length === 0) return;
+    if (!isEdit) return;
+    seededRef.current = true; // don't let the catalogue cart seed items while editing
+    fetch(`/api/orders/${editOrderId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const o = data.order;
+        if (!o) return;
+        reset({
+          branchId: o.branchId ?? "",
+          agentId: o.agent?.id ?? "",
+          agentContact: o.agentContact ?? "",
+          deliveryMethod: o.deliveryMethod,
+          deliveryAddress: o.deliveryAddress ?? "",
+          requiredDate: o.requiredDate ? String(o.requiredDate).slice(0, 10) : "",
+          urgency: o.urgency,
+          supplierId: o.supplier?.id ?? "",
+          motivation: o.motivation ?? "",
+          costCentre: o.costCentre ?? "",
+          notes: o.notes ?? "",
+          items: (o.items ?? []).map((it: Record<string, unknown>) => ({
+            productId: it.productId,
+            name: it.productNameSnapshot,
+            quantity: it.quantity,
+            size: it.size ?? "",
+            colour: it.colour ?? "",
+            material: it.material ?? "",
+            finish: it.finish ?? "",
+            customWording: it.customWording ?? "",
+            unitPrice: it.unitPriceEstimate,
+            priceOnRequest: false,
+          })),
+        });
+        setRequiredApprovals(
+          Array.isArray(o.approvals) ? o.approvals.filter((a: { required: boolean }) => a.required).map((a: { approverRole: Role }) => a.approverRole) : []
+        );
+        setExistingFiles(o.files ?? []);
+        setLoadingEdit(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, editOrderId]);
+
+  useEffect(() => {
+    if (isEdit || seededRef.current || draftItems.length === 0) return;
     seededRef.current = true;
     for (const d of draftItems) {
       append({
@@ -251,8 +307,8 @@ export default function NewOrderPage() {
     setSubmitting(action);
     try {
       const uploaded = await uploadAll();
-      const res = await fetch("/api/orders", {
-        method: "POST",
+      const res = await fetch(isEdit ? `/api/orders/${editOrderId}` : "/api/orders", {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...values, requiredApprovals, files: uploaded, action }),
       });
@@ -273,13 +329,28 @@ export default function NewOrderPage() {
     }
   }
 
+  if (loadingEdit) {
+    return (
+      <div className="space-y-4">
+        <div className="skeleton h-10 w-64 rounded-xl" />
+        <div className="skeleton h-96 rounded-2xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="space-y-5 lg:col-span-2">
         <div>
-          <p className="text-sm font-medium text-orange-600">New Order</p>
-          <h1 className="font-display text-2xl font-semibold text-navy-800 sm:text-3xl">Create an Order</h1>
-          <p className="mt-1 text-sm text-grey-500">Add products, choose delivery details, and submit for approval.</p>
+          <p className="text-sm font-medium text-orange-600">{isEdit ? "Edit Order" : "New Order"}</p>
+          <h1 className="font-display text-2xl font-semibold text-navy-800 sm:text-3xl">
+            {isEdit ? "Update Your Order" : "Create an Order"}
+          </h1>
+          <p className="mt-1 text-sm text-grey-500">
+            {isEdit
+              ? "Make your changes and resubmit for approval."
+              : "Add products, choose delivery details, and submit for approval."}
+          </p>
         </div>
 
         <form className="space-y-5">
@@ -546,6 +617,21 @@ export default function NewOrderPage() {
           </SectionCard>
 
           <SectionCard title="Attachments" description="Artwork, logos, documents and reference images" icon={Paperclip} defaultOpen={false}>
+            {existingFiles.length > 0 && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {existingFiles.map((f) => (
+                  <a
+                    key={f.id}
+                    href={f.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-grey-200 px-3 py-1.5 text-xs text-navy-700 hover:border-orange-300 hover:text-orange-600"
+                  >
+                    {f.fileName}
+                  </a>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FileDropzone label="Artwork" files={artwork} onChange={setArtwork} />
               <FileDropzone label="Logo" files={logo} onChange={setLogo} />
@@ -604,7 +690,7 @@ export default function NewOrderPage() {
               onClick={handleSubmit((v) => onSubmit(v, "submit"))}
               magnetic
             >
-              <Send className="size-4" /> Submit Order
+              <Send className="size-4" /> {isEdit ? "Resubmit Order" : "Submit Order"}
             </Button>
             <Button
               type="button"
@@ -613,7 +699,7 @@ export default function NewOrderPage() {
               disabled={submitting !== null}
               onClick={handleSubmit((v) => onSubmit(v, "draft"))}
             >
-              <Save className="size-4" /> Save as Draft
+              <Save className="size-4" /> {isEdit ? "Save Changes" : "Save as Draft"}
             </Button>
           </div>
         </div>
