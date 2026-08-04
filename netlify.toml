@@ -2,5 +2,11 @@
   command = "npm run build:netlify"
   publish = "netlify-publish"
 
+[build.environment]
+  # Netlify's install step sets NODE_ENV=production, which makes npm skip
+  # devDependencies — but tailwindcss/@tailwindcss/postcss (devDependencies)
+  # are required by `next build` itself, so they must still be installed.
+  NPM_FLAGS = "--include=dev"
+
 [functions]
   directory = "netlify/functions"
