@@ -55,7 +55,14 @@ export async function GET(req: Request) {
       agent: { select: { id: true, name: true, initials: true, avatarColor: true, branch: { select: { name: true } } } },
       branch: { select: { name: true } },
       supplier: { select: { name: true } },
-      items: { select: { productNameSnapshot: true, quantity: true, lineTotalEstimate: true } },
+      items: {
+        select: {
+          productNameSnapshot: true,
+          quantity: true,
+          lineTotalEstimate: true,
+          product: { select: { categoryId: true, category: { select: { name: true } } } },
+        },
+      },
       approvals: { select: { approverRole: true, status: true, required: true } },
     },
     orderBy: { createdAt: "desc" },
