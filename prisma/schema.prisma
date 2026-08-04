@@ -1,9 +1,10 @@
 // Huizemark Agent Ordering Hub — database schema
 //
-// SQLite has no native enum support in Prisma, so "enum-like" fields below
-// are typed String and validated against the const unions in
-// src/lib/constants.ts (Role, OrderStatus, ApprovalStatus, UrgencyLevel,
-// DeliveryMethod, StockStatus, FileKind, NotificationType).
+// "Enum-like" fields below are typed String and validated against the
+// const unions in src/lib/constants.ts (Role, OrderStatus, ApprovalStatus,
+// UrgencyLevel, DeliveryMethod, StockStatus, FileKind, NotificationType)
+// rather than native Prisma enums, so local dev (SQLite, which has no
+// native enum support) and production (Postgres) share one schema.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,7 +12,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
