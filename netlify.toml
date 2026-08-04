@@ -13,3 +13,14 @@
 
 [functions]
   directory = "netlify/functions"
+  # The function's own JS has no static imports into ./standalone (it spawns
+  # that server as a child process by file path at runtime), so esbuild's
+  # dependency tracer can't discover those ~95MB / thousands of files on its
+  # own — and letting it try anyway is what was breaking every build with a
+  # generic exit code 4. node_bundler = "none" skips that tracing entirely.
+  node_bundler = "none"
+
+[functions."next-server"]
+  # Ship the standalone server + its embedded node_modules verbatim,
+  # bypassing static analysis (see node_bundler note above).
+  included_files = ["netlify/functions/next-server/standalone/**"]
