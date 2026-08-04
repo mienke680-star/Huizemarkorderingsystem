@@ -46,6 +46,7 @@ export async function GET(req: Request) {
   const agents = seeAll
     ? await prisma.user.findMany({
         where: { role: "AGENT", name: { contains: q } },
+        select: { id: true, name: true },
         take: 6,
       })
     : [];

@@ -13,7 +13,15 @@ export async function GET() {
   const agents = await prisma.user.findMany({
     where: { role: "AGENT" },
     orderBy: { name: "asc" },
-    include: { branch: { select: { name: true } } },
+    select: {
+      id: true,
+      name: true,
+      initials: true,
+      avatarColor: true,
+      phone: true,
+      branchId: true,
+      branch: { select: { name: true } },
+    },
   });
 
   return NextResponse.json({ agents });
