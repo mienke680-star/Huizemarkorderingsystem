@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 4000;
 const HOST = "127.0.0.1";
 
@@ -17,7 +17,7 @@ function bootServer() {
   if (serverReady) return serverReady;
 
   serverReady = new Promise((resolve, reject) => {
-    const serverPath = path.join(__dirname, "standalone", "server.js");
+    const serverPath = path.join(moduleDir, "standalone", "server.js");
     const child = spawn(process.execPath, [serverPath], {
       env: { ...process.env, PORT: String(PORT), HOSTNAME: HOST },
       stdio: "inherit",
