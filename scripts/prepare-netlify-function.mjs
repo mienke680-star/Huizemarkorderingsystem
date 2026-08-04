@@ -12,18 +12,24 @@
 // through the function instead of being served from the CDN edge), but it
 // gets a fully working deployment out of a deploy path that won't run
 // build plugins at all.
-import { cp, mkdir, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
 const functionDir = path.join(root, "netlify", "functions", "next-server");
 const standaloneOut = path.join(functionDir, "standalone");
 
-await rm(standaloneOut, { recursive: true, force: true });
-await mkdir(standaloneOut, { recursive: true });
+function copyDir(src, dest) {
+  mkdirSync(path.dirname(dest), { recursive: true });
+  execFileSync("cp", ["-a", src, dest]);
+}
 
-await cp(path.join(root, ".next", "standalone"), standaloneOut, { recursive: true });
-await cp(path.join(root, ".next", "static"), path.join(standaloneOut, ".next", "static"), { recursive: true });
-await cp(path.join(root, "public"), path.join(standaloneOut, "public"), { recursive: true });
+rmSync(standaloneOut, { recursive: true, force: true });
+mkdirSync(standaloneOut, { recursive: true });
+
+copyDir(path.join(root, ".next", "standalone") + "/.", standaloneOut);
+copyDir(path.join(root, ".next", "static"), path.join(standaloneOut, ".next", "static"));
+copyDir(path.join(root, "public"), path.join(standaloneOut, "public"));
 
 console.log("Prepared standalone Next.js server for Netlify Function at", standaloneOut);
