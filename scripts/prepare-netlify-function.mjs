@@ -20,16 +20,25 @@ const root = process.cwd();
 const functionDir = path.join(root, "netlify", "functions", "next-server");
 const standaloneOut = path.join(functionDir, "standalone");
 
-function copyDir(src, dest) {
+function moveInto(src, dest) {
   mkdirSync(path.dirname(dest), { recursive: true });
-  execFileSync("cp", ["-a", src, dest]);
+  execFileSync("mv", [src, dest]);
 }
 
 rmSync(standaloneOut, { recursive: true, force: true });
-mkdirSync(standaloneOut, { recursive: true });
 
-copyDir(path.join(root, ".next", "standalone") + "/.", standaloneOut);
-copyDir(path.join(root, ".next", "static"), path.join(standaloneOut, ".next", "static"));
-copyDir(path.join(root, "public"), path.join(standaloneOut, "public"));
+// The full root node_modules (hundreds of MB) and the webpack/turbopack
+// build cache are both dead weight once `next build` has finished — the
+// standalone output already carries its own minimal, traced node_modules.
+// Freeing this before moving files around keeps peak disk usage on
+// constrained CI build containers as low as possible.
+rmSync(path.join(root, "node_modules"), { recursive: true, force: true });
+rmSync(path.join(root, ".next", "cache"), { recursive: true, force: true });
+
+// mv (not cp) so the source is never duplicated on disk, even briefly.
+mkdirSync(functionDir, { recursive: true });
+execFileSync("mv", [path.join(root, ".next", "standalone"), standaloneOut]);
+moveInto(path.join(root, ".next", "static"), path.join(standaloneOut, ".next", "static"));
+moveInto(path.join(root, "public"), path.join(standaloneOut, "public"));
 
 console.log("Prepared standalone Next.js server for Netlify Function at", standaloneOut);
