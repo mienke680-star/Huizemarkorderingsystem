@@ -12,6 +12,7 @@ export default auth((req) => {
   const isPublic =
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/api/auth") ||
+    pathname === "/api/admin/seed" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/uploads");
 
