@@ -56,9 +56,19 @@ export default async (request) => {
   const target = `http://${HOST}:${PORT}${url.pathname}${url.search}`;
   const hasBody = !["GET", "HEAD"].includes(request.method);
 
+  // Host is a forbidden fetch header — it always gets overwritten to match
+  // `target` (127.0.0.1:4000), so Next.js/NextAuth would otherwise build
+  // every absolute URL (redirects, the callback-url cookie, etc.) against
+  // that unreachable internal address instead of the real public domain.
+  // trustHost (auth.config.ts) makes NextAuth prefer x-forwarded-host, so
+  // set it explicitly from the original request.
+  const headers = new Headers(request.headers);
+  headers.set("x-forwarded-host", url.host);
+  headers.set("x-forwarded-proto", url.protocol.replace(":", ""));
+
   const upstream = await fetch(target, {
     method: request.method,
-    headers: request.headers,
+    headers,
     body: hasBody ? await request.arrayBuffer() : undefined,
     redirect: "manual",
   });
